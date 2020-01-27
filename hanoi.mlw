@@ -1,0 +1,87 @@
+(* On dispose de trois pivots : A, B et C. Sur le pivot A
+   on a N disques de tailles 1 à N :
+
+      |         |         |
+      #         |         |
+     ##         |         |
+     ###        |         |
+    ####        |         |
+    #####       |         |
+   ######       |         |
+  =============================
+      A         B         C
+
+On doit transmettre tous les disques du pivot A au pivot B,
+en respectant deux règles:
+
+  1. On déplace un disque à la fois, du sommet d'un pivot
+     au sommet d'un autre.
+
+  2. On ne peut pas poser un disque par dessus un disque
+     plus petit.
+
+La deuxième règle nous dit qu'à tout moment on peut considérer un
+pivot comme une liste d'entiers naturels triée en ordre croissant.
+
+Un simple algorithme récursif, implémenté ci-dessous consiste à
+faire les trois pas suivants :
+
+  1. Déplacer la tour de N-1 disques du pivot A au pivot C.
+  2. Déplacer le disque N du pivot A au pivot B.
+  3. Déplacer la tour de N-1 disques du pivot C au pivot B.
+*)
+
+predicate _TO_BE_COMPLETED
+
+use int.Int
+use list.List
+use list.Length
+use list.SortedInt
+
+type tower = {
+  mutable rod : list int;
+} invariant {
+  sorted rod
+}
+
+(* la fonction logique "prepend n s" ajoute les
+    nombres de 1 à n à la tête de la liste s. *)
+function prepend (n: int) (s: list int) : list int
+
+axiom prepend_def_zero :
+  forall s: list int, n: int.
+    n <= 0 -> prepend n s = s
+
+axiom prepend_def_succ :
+  forall s: list int, n: int.
+    n > 0 -> prepend n s = prepend (n - 1) (Cons n s)
+
+(* la fonction "move a b" déplace le disque
+    du sommet du pivot a au sommet du pivot b. *)
+let move (a b: tower) (ghost n: int) (ghost s: list int)
+  requires { a.rod = Cons n s }
+  requires { _TO_BE_COMPLETED }
+  ensures  { _TO_BE_COMPLETED }
+=
+  match a.rod with
+  | Cons x r ->
+      a.rod <- r;
+      b.rod <- Cons x b.rod
+  | Nil -> absurd
+  end
+
+let rec hanoi_rec (a b c: tower) (n: int) (ghost s: list int)
+  requires { a.rod = prepend n s }
+  requires { _TO_BE_COMPLETED }
+  ensures  { _TO_BE_COMPLETED }
+  (* variant  { (* TO BE COMPLETED *) } *)
+=
+  absurd (* TO BE COMPLETED *)
+
+let hanoi (a b c: tower)
+  requires { a.rod = prepend (length a.rod) Nil }
+  requires { b.rod = c.rod = Nil }
+  ensures  { b.rod = old a.rod }
+  ensures  { a.rod = c.rod = Nil }
+=
+  hanoi_rec a b c (length a.rod) Nil

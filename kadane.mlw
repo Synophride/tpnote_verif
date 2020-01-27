@@ -1,0 +1,61 @@
+(* Un sous-tableau d'un tableau [a] est un sous-ensemble d'éléments
+   contigüs de [a]. Par exemple, si a = { 0, 3, -1, 4 }, des sous-tableaux
+   possibles sont {}, { 0 }, { 3, -1 }, { 0, 3, -1, 4 }.
+
+   Un sous-tableau de [a] est dit maximal si la somme de ses éléments est au
+   moins aussi grande que celle de n'importe quel autre sous-tableau de [a].
+   L'unique sous-tableau maximal de l'exemple précédent est { 3, -1, 4 }.
+
+   Les sous-tableaux de taille 0 étant autorisés, un tableau avec uniquement
+   des valeurs négatives a une somme maximale de 0.
+
+   La fonction [kadane a] ci-dessous implémente l'algorithme de Kadane qui
+   renvoie la somme d'un sous-tableau maximal de [a].
+*)
+
+(* À faire :
+
+   1. Donner une spécification de la fonction [kadane]. Utiliser la fonction
+   logique [sum (a: array int) (l h: int)] calculant la somme des éléments
+   entre les indices [l] (inclus) et [h] (exclu) du tableau [a].
+
+   2. Modifier le programme de manière à ajouter 3 variables fantômes
+   [cur_low], [max_low] et [max_high] calculant respectivement:
+   - l'indice du début du sous-tableau duquel on est en train
+     de calculer la somme courante [cursum];
+   - l'indice du début du sous-tableau maximal courant (donnant
+     la somme [maxsum]);
+   - l'indice de la fin (exclu) du sous-tableau maximal courant.
+
+   3. Donner l'invariant de la boucle et prouver le programme.
+*)
+
+
+use int.Int
+use array.Array
+use array.ArraySum
+
+(*
+  [| | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |]
+    ......|###### maxsum #######|..............
+    ............................. |## cursum ##
+*)
+
+predicate _TO_BE_COMPLETED
+
+let kadane (a: array int): int
+  ensures { _TO_BE_COMPLETED }
+=
+  let ref maxsum = 0 in
+  let ref cursum = 0 in
+  for i = 0 to a.length - 1 do
+    invariant { _TO_BE_COMPLETED }
+    cursum <- cursum + a[i];
+    if cursum < 0 then begin
+      cursum <- 0
+    end;
+    if cursum > maxsum then begin
+      maxsum <- cursum
+    end
+  done;
+  maxsum

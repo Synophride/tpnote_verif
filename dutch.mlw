@@ -1,0 +1,45 @@
+use int.Int
+use ref.Ref
+use array.Array
+use array.ArraySwap
+use array.ArrayPermut
+
+predicate _TO_BE_COMPLETED
+
+(* L'algorithme ci-dessous trie le tableau à trois valeurs
+   en un seul parcours de gauche à droite. La postcondition
+   et l'invariant de préservation des éléments sont déjà
+   placés dans le code.
+
+   Prouver qu'à la fin du programme, le tableau est trié.
+   Utiliser le prédicat logique [monochrome].
+*)
+
+type color = Blue | White | Red
+
+predicate monochrome (a: array color) (i j: int) (c: color) =
+  forall k: int. 0 <= i <= k < j <= a.length -> a[k] = c
+
+let dutch_flag (a:array color) : unit
+  ensures { _TO_BE_COMPLETED }
+  ensures { permut_all (old a) a }
+=
+  let ref b = 0 in
+  let ref i = 0 in
+  let ref r = a.length in
+  while i < r do
+    invariant { _TO_BE_COMPLETED }
+    invariant { permut_all (old a) a }
+    match a[i] with
+    | Blue ->
+        swap a b i;
+        b <- b + 1;
+        i <- i + 1
+    | White ->
+        i <- i + 1
+    | Red ->
+        r <- r - 1;
+        swap a r i
+    end
+  done
+
