@@ -9,7 +9,7 @@
   Votre but est de:
 
   1. prouver l'absence d'erreurs à l'exécution de toutes les fonctions
-  (en ajoutant les préconditions ACSL nécessaires) ; il est conseillé de 
+  (en ajoutant les préconditions ACSL nécessaires) ; il est conseillé  
   commencer par cette question.
 
   2. donner une spécification informelle (en français ou en anglais) pour chacun
@@ -54,8 +54,8 @@ typedef struct {
 /* [clear(qs)] vide une qstack. */
 /* -------------------------------------------------------------------------- */
 
-/*@requires valid(qs);
-  @assigns qs;
+/*@requires \valid(qs);
+  @assigns qs->stack.size, qs->queue.size;
 @ */ 
 void clear(qstack *qs) {
   qs->stack.size = 0;
@@ -120,20 +120,42 @@ void clear(qstack *qs) {
    - la taille des éléments internes de [qs]
    - le contenu des éléments internes de [qs] (par rapport à l'état initial)
  */
-/* -------------------------------------------------------------------------- */
 
-/*@ requires \true;   // à compléter
+/*@ requires \valid(qs);
+  @ requires qs->queue.size >= 0;
+  @ requires qs->stack.size >= 0;
+  @ requires \true;
+  
+  @ assigns qs->queue.size, 
+            qs->stack.size,
+	    qs->queue.content[0 .. MAX_SIZE - 1],
+	    qs->stack.content[0 .. MAX_SIZE - 1]; 
+
+  @ behavior empty: 
+      assumes qs->stack.size == 0 && qs->queue.size==0;
+      assigns \nothing;
+      ensures \result == -1; 
+      
+  @ behavior stack_empty: 
+      assumes qs->stack.size == 0 && qs->queue.size > 0;
+
+      ensures \forall integer i; 0 <= i < MAX_SIZE ==> 
+           (qs->queue.content[i] == \old(qs->queue.content[i]) 
+        && (qs->stack.content[i] == \old(qs->stack.content[i])));
+
+      assigns qs->queue.size, qs->queue.contents[0.. MAX_SIZE]; 
   @
-  @ assigns \nothing; // à compléter
-  @
-  @ behavior empty:       // cas d'une qstack vide
-      ensures \true;  // à compléter
-  @
-  @ behavior stack_empty: // cas où seule la pile interne est vide
-      ensures \true;  // à compléter
-  @
-  @ behavior filled:      // cas où ni la pile, ni la file ne sont vides
-      ensures \true;  // à compléter
+  @ behavior filled:
+      assumes qs->stack.size > 0;
+      ensures qs->stack.size == \old(qs->stack.size) - 1 ;
+      ensures 
+      \forall integer i; 0 <= i < MAX_SIZE ==> 
+         (0 <= i < qs->queue.size ==> 
+	     qs->queue.content[i] == \old(qs->queue.content[i+1]))
+	 && (qs->queue.size <= i < MAX_SIZE ==>  
+	     qs->queue.content[i] == \old(qs->queue.content[i]))
+         && (qs->stack.content[i] == \old(qs->stack.content[i]));
+      assigns qs->stack.size;
   @
   @ complete behaviors;
   @ disjoint behaviors;
