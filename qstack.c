@@ -121,64 +121,82 @@ void clear(qstack *qs) {
    - le contenu des éléments internes de [qs] (par rapport à l'état initial)
  */
 
-/*@ requires \valid(qs);
-  @ requires qs->queue.size >= 0;
-  @ requires qs->stack.size >= 0;
-  @ requires \true;
+/*@
+  @ requires \valid(qs);
+  @ requires \separated(qs->stack.content, qs->queue.content);
+  @ requires \valid(qs->stack.content+(0 .. MAX_SIZE-1));
+  @ requires \valid(qs->queue.content+(0 .. MAX_SIZE-1));  
+  @ requires 0 <= qs->queue.size <= MAX_SIZE;
+  @ requires 0 <= qs->stack.size <= MAX_SIZE;
   
-  @ assigns qs->queue.size, 
-            qs->stack.size,
-	    qs->queue.content[0 .. MAX_SIZE - 1],
-	    qs->stack.content[0 .. MAX_SIZE - 1]; 
+  @ assigns qs->stack.size;
+  @ assigns qs->queue.size;
+  @ assigns qs->queue.content[0 .. MAX_SIZE-1];
 
-  @ behavior empty: 
-      assumes qs->stack.size == 0 && qs->queue.size==0;
-      assigns \nothing;
-      ensures \result == -1; 
-      
-  @ behavior stack_empty: 
-      assumes qs->stack.size == 0 && qs->queue.size > 0;
-
-      ensures \forall integer i; 0 <= i < MAX_SIZE ==> 
-           (qs->queue.content[i] == \old(qs->queue.content[i]) 
-        && (qs->stack.content[i] == \old(qs->stack.content[i])));
-
-      assigns qs->queue.size, qs->queue.contents[0.. MAX_SIZE]; 
+  @ behavior empty:
+  @    assumes qs->stack.size == 0 && qs->queue.size==0;
   @
+  @    ensures \result == -1; 
+  @    assigns \nothing;
+  
+  @ behavior stack_empty:
+  @    assumes qs->stack.size == 0 && qs->queue.size > 0;
+  @    
+  @    ensures qs->stack.size == 0 ;
+  @    ensures \result == \old(qs->queue.content[0]);
+  @    ensures qs->queue.size == \old(qs->queue.size) - 1;
+  @    ensures \forall integer i; 0 <= i < qs->queue.size
+  @        ==> qs->queue.content[i] == \old(qs->queue.content[i+1]);
+  @
+  @    assigns qs->queue;
+  @    assigns qs->queue.size;
+  @    assigns qs->queue.content[ 0 .. MAX_SIZE-1];
+  
   @ behavior filled:
-      assumes qs->stack.size > 0;
-      ensures qs->stack.size == \old(qs->stack.size) - 1 ;
-      ensures 
-      \forall integer i; 0 <= i < MAX_SIZE ==> 
-         (0 <= i < qs->queue.size ==> 
-	     qs->queue.content[i] == \old(qs->queue.content[i+1]))
-	 && (qs->queue.size <= i < MAX_SIZE ==>  
-	     qs->queue.content[i] == \old(qs->queue.content[i]))
-         && (qs->stack.content[i] == \old(qs->stack.content[i]));
-      assigns qs->stack.size;
+  @   assumes qs->stack.size > 0 && qs->queue.size >= 0;
+  @   
+  @   ensures \result == qs->stack.content[qs->stack.size];
+  @   ensures qs->stack.size == \old(qs->stack.size) - 1;
   @
+  @   assigns qs -> stack.size;
+
   @ complete behaviors;
   @ disjoint behaviors;
   @ */
-int pop(qstack *qs) {
-  if (qs->stack.size == 0) {
-    if (qs->queue.size == 0)
-      return -1;
-    qs->queue.size--;
-    int res = qs->queue.content[0];
-    for(int i = 0; i < qs->queue.size; i++)
-      qs->queue.content[i] = qs->queue.content[i+1];
-    return res;
-  }
-  qs->stack.size--;
-  return qs->stack.content[qs->stack.size];
+int pop(qstack *qs) {    
+    if (qs->stack.size == 0) {
+
+	if (qs->queue.size == 0)
+	    return -1;
+	
+	qs->queue.size--; 
+	int res = qs->queue.content[0];
+	
+	/*@ loop invariant 0 <= i <= qs->queue.size < MAX_SIZE;
+	  @ loop invariant \forall integer j; 0 <= j < i
+	  @      ==> qs->queue.content[j] 
+	  @       == \at(qs->queue.content[j+1], LoopEntry);
+	  @ 
+	  @ loop invariant \forall integer j; i <= j < MAX_SIZE 
+	  @      ==> qs->queue.content[j] 
+	  @       == \at(qs->queue.content[j], Pre);
+
+	  @ loop assigns qs->queue.content[0 .. MAX_SIZE - 1], i;
+	*/
+	for(int i = 0; i < qs->queue.size; i++)
+	    qs->queue.content[i] = qs->queue.content[i+1];
+	return res;
+    }
+    
+    qs->stack.size--;
+    return qs->stack.content[qs->stack.size];
 }
 
 /* -------------------------------------------------------------------------- */
 /* [transfer(src, dst)] est une fonction auxiliaire de [push] et [enqueue] qui
    transfère les [(MAX_SIZE - dst->size) / 2)] (+ 1 si la différence est
    impaire) plus anciens éléments de [src] à la fin de [dst].
-
+r
    La spécification formelle doit notamment préciser, pour chaque comportement:
    - le résultat retourné
    - la taille des éléments internes de [qs]
