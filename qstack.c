@@ -162,7 +162,7 @@ void clear(qstack *qs) {
 
   @ complete behaviors;
   @ disjoint behaviors;
-  @ */
+  @*/
 int pop(qstack *qs) {    
     if (qs->stack.size == 0) {
 
@@ -227,15 +227,15 @@ r
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @     \forall integer i; 0 <= i < offset 
   @       ==> dst->content[i] == \old(src->content[size + i]);
+  
   @   ensures 
   @     \let size = MAX_SIZE - \at(dst->size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @      \forall integer i; 0 <= i < offset 
   @         ==> \old(dst->content[i]) == dst->content[i + offset];
-
-
   @   assigns src->size, src->content[ 0 .. MAX_SIZE - 1];
   @   assigns dst->size, dst->content[ 0 .. MAX_SIZE - 1];
+  
   
   @ complete behaviors;
   @ disjoint behaviors;
@@ -251,20 +251,26 @@ int transfer(xifo *src, xifo *dst) {
       // plus facile pour la preuve mais pas forcément pour les points 
       
       /*@ loop invariant (-1 <= i < dst->size);
-
-	@ loop invariant \forall integer j;  -1 <= i < j < dst->size
+	@ loop invariant \forall integer j; -1 <= i < j < dst->size
 	@      ==>     dst->content[ j + offset ]
 	@       == \at(dst->content[ j ], LoopEntry);
-
+	
+	@ loop invariant \forall integer j; 0 <= j <= i 
+	@      ==>  dst->content[ j ]
+	@       == \at(dst->content[ j ], LoopEntry);
+	
 	@ loop assigns dst->content[0 .. MAX_SIZE - 1], i;
 	
 	@ loop variant i;
 	@*/ 
       for(i = dst->size-1; i >= 0; i--)
-	  // Décalage des éléments de dst de <offset> vers la droite
 	  dst->content[i+offset] = dst->content[i];
         
-      /*@ loop invariant 0 <= i <= offset < MAX_SIZE; 
+      /*@ loop invariant orange: 0 <= i <= offset < MAX_SIZE; 
+	
+	@ loop invariant endive: \forall integer j; 0 <= j < i
+	@      ==> dst->content[j]
+	@       == src->content[offset - 1 - j  ];
 	
 	@ loop assigns dst->content[ 0 .. MAX_SIZE - 1], i;
 	
@@ -274,26 +280,37 @@ int transfer(xifo *src, xifo *dst) {
 	  //  copie des <offset> derniers éléments de src
 	  // vers les <offset> premiers éléments de dst
 	  dst->content[i] = src->content[offset-i-1];
+      
+      /*@ loop invariant borne: 0 <= i <= src->size-offset < MAX_SIZE; 
+	
+	@ loop invariant betterave: \forall integer j; 0 <= j< i
+	@      ==> src->content[j]
+	@       == \at( src->content[ j+offset ], LoopEntry );
 
-      /*@ loop invariant 0 <= i <= src->size-offset < MAX_SIZE;
+	@ loop invariant banane:
+	@   \forall integer j; i+offset <= j < MAX_SIZE
+	@      ==> src->content[j]
+	@       == \at(src->content[j], LoopEntry);
 	
 	@ loop assigns src->content[ 0 .. MAX_SIZE - 1], i;
 	
-	@ loop variant src->size - offset - i;
+	@ loop variant (src->size - offset) - i;
       */
-      for(i = 0; i < src->size-offset; i++)
+      for( i = 0; i < src->size-offset; i++ )
 	  // décalage des éléments de <offset> vers la gauche
 	  src->content[i] = src->content[i+offset];
-
+      
       src->size -= offset;
       dst->size += offset;
       
       /* les assertions suivantes sont nécessaires avec certaines versions de
          Frama-C et Alt-Ergo. Elles doivent être prouvées. */
-      /* @ assert queueHasShifted{Pre,Here}(dst, offset); */
-      /* @ assert isTransferred{Pre,Here}(src, dst, offset); */
-      /* @ assert stackHasShifted{Pre,Here}(src, offset); */
+      
+      /*@assert oignon: queueHasShifted{Pre,Here}(dst, offset);*/
+      /*@assert echalote: isTransferred{Pre,Here}(src, dst, offset); */
+      /*@assert ail: stackHasShifted{Pre,Here}(src, offset); */
     }
+    
   }
   return 1;
 }
@@ -355,21 +372,21 @@ int push(qstack *qs, elt e) {
   @
   @ behavior space_left: // la file de [qs] a au moins un espace libre
   @   ensures \true; // à compléter
-  @
+  
   @ behavior transfer: // la file de [qs] est complète, mais pas sa pile
   @   ensures \true; // à compléter
   @   ensures // ce début est cadeau
   @     \let size = MAX_SIZE - \at(qs->stack.size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @     \true;
-  @
+  
   @ complete behaviors;
   @ disjoint behaviors;
   @ */
 int enqueue(qstack *qs, elt e) {
-  if (! transfer(&qs->queue, &qs->stack))
-    return -1;
-  qs->queue.content[qs->queue.size] = e;
-  qs->queue.size++; 
- return e;
+    if (! transfer(&qs->queue, &qs->stack))
+	return -1;
+    qs->queue.content[qs->queue.size] = e;
+    qs->queue.size++; 
+    return e;
 }
