@@ -91,7 +91,7 @@ void clear(qstack *qs) {
   @   predicate queueHasShifted{L1,L2}(xifo *queue, integer offset) =
   @     \forall integer i; 0 <= i < \at(queue->size, L1) - 1 ==>
   @       \at(queue->content[i], L1) == \at(queue->content[i+offset], L2);
-  // Virage d'un unique élément + décalage
+  // décalage
   // L1 :  ( queue -> contents ) [queue->contents[ 0 -> queue->size ]  
   //   ([e1, e2, e3, e4], N, N+1...) 
   // L2 : 
@@ -208,7 +208,7 @@ r
   @ requires \separated(src, dst); 
   @ requires 0 <= src->size <= MAX_SIZE; 
   @ requires 0 <= dst->size <= MAX_SIZE;
-  
+
   @ behavior full:
   @   assumes src->size == dst->size == MAX_SIZE; 
   @   ensures \result == 0; 
@@ -222,17 +222,26 @@ r
   @ behavior transfert: 
   @   assumes src->size == MAX_SIZE && dst->size < MAX_SIZE;
   @   
-  @   ensures // ce début est cadeau
+  @   // Décalage des éléments de dst
+  @   ensures BAGUETTE: // ce début est cadeau
   @     \let size = MAX_SIZE - \at(dst->size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
-  @     \forall integer i; 0 <= i < offset 
-  @       ==> dst->content[i] == \old(src->content[size + i]);
+  @     \forall integer i; (0 <= i < MAX_SIZE - offset
+  @       ==> (src->content[i] == \old(src->content[i + offset])));
+
+  @   ensures CROISSANT: 
+  @     \let size = MAX_SIZE - \at(dst->size, Pre);
+  @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
+  @     \forall integer i; ( 0 <= i < \old(dst->size) 
+  @       ==> dst->content[i + offset] == \old(dst->content[i]));
   
-  @   ensures 
+  @   ensures FROMAGE: 
   @     \let size = MAX_SIZE - \at(dst->size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
-  @      \forall integer i; 0 <= i < offset 
-  @         ==> \old(dst->content[i]) == dst->content[i + offset];
+  @    \forall integer i; 0<=i<offset 
+  @       ==> dst->content[i] == \old(src->content[offset - i - 1]);
+
+  
   @   assigns src->size, src->content[ 0 .. MAX_SIZE - 1];
   @   assigns dst->size, dst->content[ 0 .. MAX_SIZE - 1];
   
@@ -272,6 +281,9 @@ int transfer(xifo *src, xifo *dst) {
 	@      ==> dst->content[j]
 	@       == src->content[offset - 1 - j  ];
 	
+	@ loop invariant couscous: \forall integer j;  i <= j < MAX_SIZE
+	@      ==> dst->content[j] == \at(dst->content[j], LoopEntry);
+
 	@ loop assigns dst->content[ 0 .. MAX_SIZE - 1], i;
 	
 	@ loop variant offset - i;
@@ -288,7 +300,7 @@ int transfer(xifo *src, xifo *dst) {
 	@       == \at( src->content[ j+offset ], LoopEntry );
 
 	@ loop invariant banane:
-	@   \forall integer j; i+offset <= j < MAX_SIZE
+	@   \forall integer j; i <= j < MAX_SIZE
 	@      ==> src->content[j]
 	@       == \at(src->content[j], LoopEntry);
 	
@@ -299,16 +311,18 @@ int transfer(xifo *src, xifo *dst) {
       for( i = 0; i < src->size-offset; i++ )
 	  // décalage des éléments de <offset> vers la gauche
 	  src->content[i] = src->content[i+offset];
-      
+      //@assert pouet: offset >= 0;
       src->size -= offset;
       dst->size += offset;
       
       /* les assertions suivantes sont nécessaires avec certaines versions de
          Frama-C et Alt-Ergo. Elles doivent être prouvées. */
-      
+
+      /*@assert champignon: \at(src->size, Pre) + \at(dst->size, Pre) == src->size + dst->size;*/
       /*@assert oignon: queueHasShifted{Pre,Here}(dst, offset);*/
       /*@assert echalote: isTransferred{Pre,Here}(src, dst, offset); */
       /*@assert ail: stackHasShifted{Pre,Here}(src, offset); */
+
     }
     
   }

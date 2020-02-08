@@ -1,6 +1,8 @@
-OPTIONS= -wp -wp-timeout 60
+OPTIONS= -wp -wp-timeout 40
 #-wp-rte -kernel-msg-key pp -wp-debug 1
+#  
+
 qstack : qstack.c
-	frama-c $(OPTIONS) qstack.c -wp-fct transfer
+	time frama-c $(OPTIONS) qstack.c -wp-fct push
 
 
