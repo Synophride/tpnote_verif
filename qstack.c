@@ -209,6 +209,7 @@ r
   @ requires 0 <= src->size <= MAX_SIZE; 
   @ requires 0 <= dst->size <= MAX_SIZE;
 
+
   @ behavior full:
   @   assumes src->size == dst->size == MAX_SIZE; 
   @   ensures \result == 0; 
@@ -221,26 +222,27 @@ r
   
   @ behavior transfert: 
   @   assumes src->size == MAX_SIZE && dst->size < MAX_SIZE;
-  @   
+  
   @   // Décalage des éléments de dst
   @   ensures BAGUETTE: // ce début est cadeau
   @     \let size = MAX_SIZE - \at(dst->size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @     \forall integer i; (0 <= i < MAX_SIZE - offset
   @       ==> (src->content[i] == \old(src->content[i + offset])));
-
+  @
   @   ensures CROISSANT: 
   @     \let size = MAX_SIZE - \at(dst->size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @     \forall integer i; ( 0 <= i < \old(dst->size) 
   @       ==> dst->content[i + offset] == \old(dst->content[i]));
-  
+  @
   @   ensures FROMAGE: 
   @     \let size = MAX_SIZE - \at(dst->size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @    \forall integer i; 0<=i<offset 
   @       ==> dst->content[i] == \old(src->content[offset - i - 1]);
-
+  @
+  @   ensures \result == 1; 
   
   @   assigns src->size, src->content[ 0 .. MAX_SIZE - 1];
   @   assigns dst->size, dst->content[ 0 .. MAX_SIZE - 1];
@@ -339,29 +341,41 @@ int transfer(xifo *src, xifo *dst) {
 */
 /* -------------------------------------------------------------------------- */
 
-/*@ requires \true;   // à compléter
-  @
-  @ assigns \nothing; // à compléter
-  @
+/*@ requires \valid(qs)
+  @       && \valid(qs -> stack.content+( 0 .. MAX_SIZE - 1 ))
+  @       && \valid(qs -> queue.content+( 0 .. MAX_SIZE - 1 ))
+  @       && 0 <= qs->stack.size <= MAX_SIZE  
+  @       && 0 <= qs->queue.size <= MAX_SIZE;
+
+  
   @ behavior full: // [qs] est complet
-  @   ensures \true;  // à compléter
-  @
+  @   assumes qs->stack.size == MAX_SIZE 
+  @        && qs->queue.size == MAX_SIZE;
+  @   ensures \true;
+  @   assigns \nothing;
+
+  
   @ behavior space_left: // la pile de [qs] a au moins un espace libre
-  @   ensures \true; // à compléter
-  @
-  @ behavior transfer: // la pile de [qs] est complète, mais pas sa file
+  @   assumes qs->stack.size < MAX_SIZE ;
+  @   ensures \true;
+  
+  @ behavior transfert: // la pile de [qs] est complète, mais pas sa file
+  @   assumes qs->stack.size == MAX_SIZE 
+  @        && qs->queue.size  < MAX_SIZE;
   @   ensures \true; // à compléter
   @   ensures // ce début est cadeau:
   @     \let size = MAX_SIZE - \at(qs->queue.size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
-  @     \true;
-  @
+  @     \true;  
+
   @ complete behaviors;
   @ disjoint behaviors;
   @ */
 int push(qstack *qs, elt e) {
-  if (! transfer(&qs->stack, &qs->queue))
+    if (! transfer(&qs->stack, &qs->queue)){
+    /*@assert \at(qs->stack.size, Here) == \at(qs->queue.size, Here) == MAX_SIZE; */
     return -1;
+    }
   qs->stack.content[qs->stack.size] = e;
   qs->stack.size++;
   return e;

@@ -3,6 +3,6 @@ OPTIONS= -wp -wp-timeout 40
 #  
 
 qstack : qstack.c
-	time frama-c $(OPTIONS) qstack.c -wp-fct push
+	time frama-c $(OPTIONS) qstack.c -wp-fct 
 
 
