@@ -205,25 +205,28 @@ r
 
 /*@ requires \valid(src);
   @ requires \valid(dst);
+  @ requires \valid(src->content+(0 .. MAX_SIZE - 1));
+  @ requires \valid(dst->content+(0 .. MAX_SIZE - 1));
   @ requires \separated(src, dst); 
   @ requires 0 <= src->size <= MAX_SIZE; 
   @ requires 0 <= dst->size <= MAX_SIZE;
 
-
   @ behavior full:
   @   assumes src->size == dst->size == MAX_SIZE; 
   @   ensures \result == 0; 
+  @   ensures src->size == dst->size == MAX_SIZE; 
   @   assigns \nothing;
   
   @ behavior space_left:
   @   assumes src->size < MAX_SIZE;
-  @   ensures \result == 1;
+  @   ensures \result == 1 && src->size < MAX_SIZE; 
+  @   // Aucune idée de pourquoi il faut mettre la seconde partie de la formule, mais ça réussit à prouver des assert dans l'appel à push 
   @   assigns \nothing;
   
   @ behavior transfert: 
   @   assumes src->size == MAX_SIZE && dst->size < MAX_SIZE;
   
-  @   // Décalage des éléments de dst
+  @   // Décalage des éléments de src
   @   ensures BAGUETTE: // ce début est cadeau
   @     \let size = MAX_SIZE - \at(dst->size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
@@ -241,7 +244,19 @@ r
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @    \forall integer i; 0<=i<offset 
   @       ==> dst->content[i] == \old(src->content[offset - i - 1]);
-  @
+
+  @   ensures JAMBON:
+  @     \let size = MAX_SIZE - \at(dst->size, Pre);
+  @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
+  @      src->size == \old(src->size) - offset 
+  @   && dst->size == \old(dst->size) + offset; 
+
+  @   ensures POIVRON:
+  @     dst->size <= MAX_SIZE;
+  @   
+  @   ensures PIZZA: 
+  @     src->size < MAX_SIZE;
+  @     
   @   ensures \result == 1; 
   
   @   assigns src->size, src->content[ 0 .. MAX_SIZE - 1];
@@ -258,12 +273,12 @@ int transfer(xifo *src, xifo *dst) {
     else {
       int size = MAX_SIZE - dst->size;
       int offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
-      int i=0; // Ajout du = 0,
-      // plus facile pour la preuve mais pas forcément pour les points 
       
+      int i=0;
+
       /*@ loop invariant (-1 <= i < dst->size);
 	@ loop invariant \forall integer j; -1 <= i < j < dst->size
-	@      ==>     dst->content[ j + offset ]
+	@      ==>   dst->content[ j + offset ]
 	@       == \at(dst->content[ j ], LoopEntry);
 	
 	@ loop invariant \forall integer j; 0 <= j <= i 
@@ -313,10 +328,11 @@ int transfer(xifo *src, xifo *dst) {
       for( i = 0; i < src->size-offset; i++ )
 	  // décalage des éléments de <offset> vers la gauche
 	  src->content[i] = src->content[i+offset];
-      //@assert pouet: offset >= 0;
+
       src->size -= offset;
       dst->size += offset;
-      
+
+
       /* les assertions suivantes sont nécessaires avec certaines versions de
          Frama-C et Alt-Ergo. Elles doivent être prouvées. */
 
@@ -344,41 +360,53 @@ int transfer(xifo *src, xifo *dst) {
 /*@ requires \valid(qs)
   @       && \valid(qs -> stack.content+( 0 .. MAX_SIZE - 1 ))
   @       && \valid(qs -> queue.content+( 0 .. MAX_SIZE - 1 ))
+  @       && \separated(qs->queue.content, qs->stack.content)
   @       && 0 <= qs->stack.size <= MAX_SIZE  
   @       && 0 <= qs->queue.size <= MAX_SIZE;
-
   
   @ behavior full: // [qs] est complet
-  @   assumes qs->stack.size == MAX_SIZE 
-  @        && qs->queue.size == MAX_SIZE;
-  @   ensures \true;
+  @   assumes qs->stack.size == MAX_SIZE
+  @       &&  qs->queue.size == MAX_SIZE;
+  @   ensures \result == -1;
   @   assigns \nothing;
-
+  
   
   @ behavior space_left: // la pile de [qs] a au moins un espace libre
-  @   assumes qs->stack.size < MAX_SIZE ;
-  @   ensures \true;
+  @   assumes qs->stack.size < MAX_SIZE;
+  @   ensures beurre: \forall integer i; 0<= i < MAX_SIZE 
+  @      && i != (qs->stack.size - 1)
+         ==> qs-> stack.content[i] == \old(qs->stack.content[i]);
+  @   ensures truffe: qs->stack.content[qs->stack.size - 1] == e; 
+  @   assigns qs->stack.size, qs->stack.content[0 .. MAX_SIZE - 1];
   
   @ behavior transfert: // la pile de [qs] est complète, mais pas sa file
   @   assumes qs->stack.size == MAX_SIZE 
   @        && qs->queue.size  < MAX_SIZE;
-  @   ensures \true; // à compléter
-  @   ensures // ce début est cadeau:
-  @     \let size = MAX_SIZE - \at(qs->queue.size, Pre);
-  @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
-  @     \true;  
 
+  @ 
+
+  @ 
+  @   assigns qs->stack.size, qs->stack.content[0 .. MAX_SIZE - 1],
+  @           qs->queue.size, qs->queue.content[0 .. MAX_SIZE - 1];
+
+
+  
   @ complete behaviors;
   @ disjoint behaviors;
+
   @ */
 int push(qstack *qs, elt e) {
-    if (! transfer(&qs->stack, &qs->queue)){
-    /*@assert \at(qs->stack.size, Here) == \at(qs->queue.size, Here) == MAX_SIZE; */
-    return -1;
+    int val = transfer(&qs->stack, &qs->queue);
+    if (!val ){
+	//@ assert semoule: qs->stack.size == qs->queue.size == MAX_SIZE; 
+	return -1;
     }
-  qs->stack.content[qs->stack.size] = e;
-  qs->stack.size++;
-  return e;
+    
+    //@assert courgette: qs->stack.size <= \at(qs->stack.size, Pre);
+    //@assert concombre: qs->stack.size < MAX_SIZE;
+    qs->stack.content[qs->stack.size] = e;
+    qs->stack.size++;
+    return e;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -398,6 +426,7 @@ int push(qstack *qs, elt e) {
   @ behavior full: // [qs] est complet
   @   ensures \true;  // à compléter
   @
+ 
   @ behavior space_left: // la file de [qs] a au moins un espace libre
   @   ensures \true; // à compléter
   
@@ -407,7 +436,7 @@ int push(qstack *qs, elt e) {
   @     \let size = MAX_SIZE - \at(qs->stack.size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @     \true;
-  
+ 
   @ complete behaviors;
   @ disjoint behaviors;
   @ */
