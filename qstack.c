@@ -133,6 +133,7 @@ void clear(qstack *qs) {
   @ assigns qs->queue.size;
   @ assigns qs->queue.content[0 .. MAX_SIZE-1];
 
+  
   @ behavior empty:
   @    assumes qs->stack.size == 0 && qs->queue.size==0;
   @    
@@ -244,7 +245,7 @@ r
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @    \forall integer i; 0<=i<offset 
   @       ==> dst->content[i] == \old(src->content[offset - i - 1]);
-
+  
   @   ensures JAMBON:
   @     \let size = MAX_SIZE - \at(dst->size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
@@ -252,10 +253,10 @@ r
   @   && dst->size == \old(dst->size) + offset; 
 
   @   ensures POIVRON:
-  @     dst->size <= MAX_SIZE;
+  @     0 <= \old(dst->size) < dst->size <= MAX_SIZE;
   @   
   @   ensures PIZZA: 
-  @     src->size < MAX_SIZE;
+  @     0 <  src->size  < \old(src->size) == MAX_SIZE;
   @     
   @   ensures \result == 1; 
   
@@ -357,53 +358,100 @@ int transfer(xifo *src, xifo *dst) {
 */
 /* -------------------------------------------------------------------------- */
 
-/*@ requires \valid(qs)
+/* @ requires \valid(qs)
   @       && \valid(qs -> stack.content+( 0 .. MAX_SIZE - 1 ))
   @       && \valid(qs -> queue.content+( 0 .. MAX_SIZE - 1 ))
   @       && \separated(qs->queue.content, qs->stack.content)
   @       && 0 <= qs->stack.size <= MAX_SIZE  
   @       && 0 <= qs->queue.size <= MAX_SIZE;
   
+
   @ behavior full: // [qs] est complet
   @   assumes qs->stack.size == MAX_SIZE
   @       &&  qs->queue.size == MAX_SIZE;
-  @   ensures \result == -1;
+  @ 
+  @   ensures beaufort: \result == -1;
   @   assigns \nothing;
   
+
   
   @ behavior space_left: // la pile de [qs] a au moins un espace libre
   @   assumes qs->stack.size < MAX_SIZE;
-  @   ensures beurre: \forall integer i; 0<= i < MAX_SIZE 
+  @
+  @   // "(presque) pas de changement dans les éléments du stack"
+  @   ensures RACLETTE: \forall integer i; 0<= i < qs->stack.size-1
   @      && i != (qs->stack.size - 1)
-         ==> qs-> stack.content[i] == \old(qs->stack.content[i]);
-  @   ensures truffe: qs->stack.content[qs->stack.size - 1] == e; 
-  @   assigns qs->stack.size, qs->stack.content[0 .. MAX_SIZE - 1];
-  
+  @       ==> qs-> stack.content[i] == \old(qs->stack.content[i]);
+  @
+  @ // Ajout de l'élément
+  @   ensures camembert: qs->stack.content[qs->stack.size - 1] == e;
+  @ // Vérification de la taille 
+  @   ensures comte: qs->stack.size == \old(qs->stack.size) +1;
+  @   ensures roquefort: \result == e; 
+ 
+  // Pas de touchage de qs->queue (donc rien à prouver de ce côté là) 
+  @   assigns emmental : 
+  @           qs->stack.size, 
+  @           qs->stack.content[0 .. MAX_SIZE - 1];
+
+
+
   @ behavior transfert: // la pile de [qs] est complète, mais pas sa file
   @   assumes qs->stack.size == MAX_SIZE 
-  @        && qs->queue.size  < MAX_SIZE;
+  @        && qs->queue.size <  MAX_SIZE;  
+  
+  // Ajout d'un élémént sur les deux trucs
+  @   ensures bleu: qs->stack.size + qs->queue.size 
+  @                == \old(qs->stack.size) + \old(qs->queue.size) +1;
+  
+  @   ensures reblochon:
+  @     \let size = MAX_SIZE - \old(qs->queue.size) ;
+  @     \let offset = size%2 == 0 ? size/2 : size/2+1 ;
+  @         queueHasShifted{Pre, Post}(&qs->queue, offset)
+  @      && isTransferred{Pre, Post}(&qs->stack, &qs->queue, offset)
+  @      && stackHasShifted{Pre, Post}(&qs->stack, offset);
+  
+  @   ensures cantal: qs->stack.content[qs->stack.size - 1 ] == e;
 
-  @ 
-
-  @ 
-  @   assigns qs->stack.size, qs->stack.content[0 .. MAX_SIZE - 1],
-  @           qs->queue.size, qs->queue.content[0 .. MAX_SIZE - 1];
-
-
+  @   ensures tomme: \result == e; 
+  @   assigns qs->stack, 
+  @           qs->queue,
+  @           qs->stack.size, 
+  @           qs->stack.content[0 .. MAX_SIZE - 1],
+  @           qs->queue.size, 
+  @           qs->queue.content[0 .. MAX_SIZE - 1];
   
   @ complete behaviors;
   @ disjoint behaviors;
 
   @ */
 int push(qstack *qs, elt e) {
-    int val = transfer(&qs->stack, &qs->queue);
-    if (!val ){
-	//@ assert semoule: qs->stack.size == qs->queue.size == MAX_SIZE; 
+    
+    //@ ghost int stack_is_full = qs->stack.size == MAX_SIZE;
+    //@ ghost int size   = MAX_SIZE - qs->queue.size;
+    //@ ghost int offset = size%2 == 0 ? size/2:size/2+1;
+    //@ assert babybel: stack_is_full <==> qs->stack.size == MAX_SIZE;
+    if (!transfer(&qs->stack, &qs->queue)){
+	//@ assert saint_marcelin: qs->stack.size == qs->queue.size == MAX_SIZE;
+	//@ assert champ_joli: stack_is_full;
 	return -1;
     }
+
+    /*@ assert ossau_iraty: stack_is_full ==>
+      @     queueHasShifted{Pre, Here}(&qs->queue, offset)
+      @  && isTransferred{Pre, Here}(&qs->stack, &qs->queue, offset)
+      @  && stackHasShifted{Pre, Here}(&qs->stack, offset);
+    */
     
-    //@assert courgette: qs->stack.size <= \at(qs->stack.size, Pre);
-    //@assert concombre: qs->stack.size < MAX_SIZE;
+    /* @ assert rocamadour: !stack_is_full ==>
+      @     \forall integer i; 0<=i < MAX_SIZE
+      @         ==> qs->stack.content[i] == \at(qs->stack.content[i], Pre)
+      @        && sq->stack.size == \at(qs->stack.size, Pre) ;
+    */
+    
+    //@assert cabecou: qs->stack.size <= \at(qs->stack.size, Pre);
+    //@assert coulommiers:   \at(qs->queue.size, Pre) <= qs->queue.size;
+    //@assert mont_d_or: 0 <= qs->stack.size < MAX_SIZE;
     qs->stack.content[qs->stack.size] = e;
     qs->stack.size++;
     return e;

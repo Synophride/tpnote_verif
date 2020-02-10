@@ -1,4 +1,4 @@
-OPTIONS= -wp -wp-timeout 360 -wp-rte
+OPTIONS= -wp -wp-timeout 120 
 #-wp-rte -kernel-msg-key pp -wp-debug 1 -slevel 5
 #  
 
