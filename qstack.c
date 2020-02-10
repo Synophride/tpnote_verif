@@ -214,17 +214,32 @@ r
 
   @ behavior full:
   @   assumes src->size == dst->size == MAX_SIZE; 
-  @   ensures \result == 0; 
-  @   ensures src->size == dst->size == MAX_SIZE; 
+  @
+  @   ensures \result == 0;
+  @   ensures src->size == \old(src->size) 
+  @        == dst->size == \old(dst->size) 
+  @        == MAX_SIZE;
+  @
+  @   ensures \forall integer i; 0 <= i < MAX_SIZE 
+  @       ==> src->content[i] == \old(src->content[i])
+  @        && dst->content[i] == \old(dst->content[i]);
+  @
   @   assigns \nothing;
   
   @ behavior space_left:
   @   assumes src->size < MAX_SIZE;
-  @   ensures \result == 1 && src->size < MAX_SIZE; 
-  @   // Aucune idée de pourquoi il faut mettre la seconde partie de la formule, mais ça réussit à prouver des assert dans l'appel à push 
+
+  @   ensures \result == 1;
+  @   ensures src->size == \old(src->size) 
+  @        && dst->size == \old(dst->size);
+  
+  @   ensures \forall integer i; 0 <= i < MAX_SIZE 
+  @       ==> src->content[i] == \old(src->content[i])
+  @        && dst->content[i] == \old(dst->content[i]);
+  
   @   assigns \nothing;
   
-  @ behavior transfert: 
+  @ behavior transfer: 
   @   assumes src->size == MAX_SIZE && dst->size < MAX_SIZE;
   
   @   // Décalage des éléments de src
@@ -233,13 +248,13 @@ r
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @     \forall integer i; (0 <= i < MAX_SIZE - offset
   @       ==> (src->content[i] == \old(src->content[i + offset])));
-  @
+  
   @   ensures CROISSANT: 
   @     \let size = MAX_SIZE - \at(dst->size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
   @     \forall integer i; ( 0 <= i < \old(dst->size) 
   @       ==> dst->content[i + offset] == \old(dst->content[i]));
-  @
+  
   @   ensures FROMAGE: 
   @     \let size = MAX_SIZE - \at(dst->size, Pre);
   @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
@@ -254,14 +269,21 @@ r
 
   @   ensures POIVRON:
   @     0 <= \old(dst->size) < dst->size <= MAX_SIZE;
-  @   
   @   ensures PIZZA: 
-  @     0 <  src->size  < \old(src->size) == MAX_SIZE;
+  @     0 < src->size < MAX_SIZE;
   @     
   @   ensures \result == 1; 
+ 
+  @   ensures 
+  @     \let size = MAX_SIZE - \at(dst->size, Pre);
+  @     \let offset = size % 2 == 0 ? size / 2 : size / 2 + 1;
+  @          queueHasShifted{Pre,Post}(dst, offset)
+  @          && isTransferred{Pre,Post}(src, dst, offset)
+  @          &&  stackHasShifted{Pre,Post}(src, offset); 
   
-  @   assigns src->size, src->content[ 0 .. MAX_SIZE - 1];
-  @   assigns dst->size, dst->content[ 0 .. MAX_SIZE - 1];
+  
+  @   assigns src->size, src->content[ 0 .. MAX_SIZE - 1],
+  @           dst->size, dst->content[ 0 .. MAX_SIZE - 1];
   
   
   @ complete behaviors;
@@ -332,7 +354,7 @@ int transfer(xifo *src, xifo *dst) {
 
       src->size -= offset;
       dst->size += offset;
-
+      
 
       /* les assertions suivantes sont nécessaires avec certaines versions de
          Frama-C et Alt-Ergo. Elles doivent être prouvées. */
@@ -358,102 +380,63 @@ int transfer(xifo *src, xifo *dst) {
 */
 /* -------------------------------------------------------------------------- */
 
-/* @ requires \valid(qs)
+/*@ requires \valid(qs)
   @       && \valid(qs -> stack.content+( 0 .. MAX_SIZE - 1 ))
   @       && \valid(qs -> queue.content+( 0 .. MAX_SIZE - 1 ))
-  @       && \separated(qs->queue.content, qs->stack.content)
   @       && 0 <= qs->stack.size <= MAX_SIZE  
   @       && 0 <= qs->queue.size <= MAX_SIZE;
-  
 
-  @ behavior full: // [qs] est complet
+  @ 
+
+  @ behavior full:
   @   assumes qs->stack.size == MAX_SIZE
   @       &&  qs->queue.size == MAX_SIZE;
-  @ 
-  @   ensures beaufort: \result == -1;
-  @   assigns \nothing;
+  @   ensures full_result: \result == -1;
+
+
   
 
   
   @ behavior space_left: // la pile de [qs] a au moins un espace libre
   @   assumes qs->stack.size < MAX_SIZE;
-  @
-  @   // "(presque) pas de changement dans les éléments du stack"
-  @   ensures RACLETTE: \forall integer i; 0<= i < qs->stack.size-1
-  @      && i != (qs->stack.size - 1)
-  @       ==> qs-> stack.content[i] == \old(qs->stack.content[i]);
-  @
-  @ // Ajout de l'élément
-  @   ensures camembert: qs->stack.content[qs->stack.size - 1] == e;
-  @ // Vérification de la taille 
-  @   ensures comte: qs->stack.size == \old(qs->stack.size) +1;
-  @   ensures roquefort: \result == e; 
- 
-  // Pas de touchage de qs->queue (donc rien à prouver de ce côté là) 
-  @   assigns emmental : 
-  @           qs->stack.size, 
-  @           qs->stack.content[0 .. MAX_SIZE - 1];
+  @   assigns qs->stack.size, qs->stack.content[0 .. MAX_SIZE -1];   
+  @   ensures \true;
 
 
-
-  @ behavior transfert: // la pile de [qs] est complète, mais pas sa file
+  @ behavior transfer: // la pile de [qs] est complète, mais pas sa file
   @   assumes qs->stack.size == MAX_SIZE 
   @        && qs->queue.size <  MAX_SIZE;  
-  
-  // Ajout d'un élémént sur les deux trucs
-  @   ensures bleu: qs->stack.size + qs->queue.size 
-  @                == \old(qs->stack.size) + \old(qs->queue.size) +1;
-  
-  @   ensures reblochon:
-  @     \let size = MAX_SIZE - \old(qs->queue.size) ;
-  @     \let offset = size%2 == 0 ? size/2 : size/2+1 ;
-  @         queueHasShifted{Pre, Post}(&qs->queue, offset)
-  @      && isTransferred{Pre, Post}(&qs->stack, &qs->queue, offset)
-  @      && stackHasShifted{Pre, Post}(&qs->stack, offset);
-  
-  @   ensures cantal: qs->stack.content[qs->stack.size - 1 ] == e;
+  @   
 
-  @   ensures tomme: \result == e; 
-  @   assigns qs->stack, 
-  @           qs->queue,
-  @           qs->stack.size, 
-  @           qs->stack.content[0 .. MAX_SIZE - 1],
-  @           qs->queue.size, 
-  @           qs->queue.content[0 .. MAX_SIZE - 1];
-  
+  @ ensures \true;
   @ complete behaviors;
   @ disjoint behaviors;
 
   @ */
 int push(qstack *qs, elt e) {
-    
-    //@ ghost int stack_is_full = qs->stack.size == MAX_SIZE;
-    //@ ghost int size   = MAX_SIZE - qs->queue.size;
-    //@ ghost int offset = size%2 == 0 ? size/2:size/2+1;
-    //@ assert babybel: stack_is_full <==> qs->stack.size == MAX_SIZE;
+    //@ ghost int full_stack=qs->stack.size == MAX_SIZE;
+    //@ ghost int full= full_stack && qs->queue.size == MAX_SIZE;
+
+    /*@ assert precond_transfer:
+      @       \valid(qs)
+      @    && 0 <= (&qs->stack)->size <= MAX_SIZE 
+      @    && 0 <= (&qs->queue)->size <= MAX_SIZE
+      @    && \valid(&qs->stack) && \valid(&qs->queue) 
+      @ && \separated(&qs->stack, &qs->queue);
+    */
     if (!transfer(&qs->stack, &qs->queue)){
-	//@ assert saint_marcelin: qs->stack.size == qs->queue.size == MAX_SIZE;
-	//@ assert champ_joli: stack_is_full;
+	//@assert full;
+	
 	return -1;
     }
 
-    /*@ assert ossau_iraty: stack_is_full ==>
-      @     queueHasShifted{Pre, Here}(&qs->queue, offset)
-      @  && isTransferred{Pre, Here}(&qs->stack, &qs->queue, offset)
-      @  && stackHasShifted{Pre, Here}(&qs->stack, offset);
-    */
-    
-    /* @ assert rocamadour: !stack_is_full ==>
-      @     \forall integer i; 0<=i < MAX_SIZE
-      @         ==> qs->stack.content[i] == \at(qs->stack.content[i], Pre)
-      @        && sq->stack.size == \at(qs->stack.size, Pre) ;
-    */
-    
-    //@assert cabecou: qs->stack.size <= \at(qs->stack.size, Pre);
-    //@assert coulommiers:   \at(qs->queue.size, Pre) <= qs->queue.size;
-    //@assert mont_d_or: 0 <= qs->stack.size < MAX_SIZE;
+    //@assert full_stack ==> qs->stack.size < MAX_SIZE;
+    //@assert !full_stack==> qs->stack.size == \at(qs->stack.size, Pre);
     qs->stack.content[qs->stack.size] = e;
+
+    
     qs->stack.size++;
+
     return e;
 }
 
@@ -467,9 +450,14 @@ int push(qstack *qs, elt e) {
 */
 /* -------------------------------------------------------------------------- */
 
-/*@ requires \true;   // à compléter
+/*@ requires \valid(qs)
+  @       && \valid(qs -> stack.content+( 0 .. MAX_SIZE - 1 ))
+  @       && \valid(qs -> queue.content+( 0 .. MAX_SIZE - 1 ))
+  @       && 0 <= qs->stack.size <= MAX_SIZE  
+  @       && 0 <= qs->queue.size <= MAX_SIZE;
+ 
   @
-  @ assigns \nothing; // à compléter
+  @ assigns \nothing; 
   @
   @ behavior full: // [qs] est complet
   @   ensures \true;  // à compléter
@@ -489,6 +477,13 @@ int push(qstack *qs, elt e) {
   @ disjoint behaviors;
   @ */
 int enqueue(qstack *qs, elt e) {
+
+    /*@ assert legit_call:
+      @    \valid(qs) 
+      @ && 0 <= qs->stack.size <= MAX_SIZE 
+      @ && 0 <= qs->queue.size <= MAX_SIZE;
+      
+      @ */
     if (! transfer(&qs->queue, &qs->stack))
 	return -1;
     qs->queue.content[qs->queue.size] = e;
