@@ -4,8 +4,6 @@ use array.Array
 use array.ArraySwap
 use array.ArrayPermut
 
-predicate _TO_BE_COMPLETED
-
 (* L'algorithme ci-dessous trie le tableau à trois valeurs
    en un seul parcours de gauche à droite. La postcondition
    et l'invariant de préservation des éléments sont déjà
@@ -13,6 +11,8 @@ predicate _TO_BE_COMPLETED
 
    Prouver qu'à la fin du programme, le tableau est trié.
    Utiliser le prédicat logique [monochrome].
+
+   POINT BONUS : ajouter une quatrième couleur
 *)
 
 type color = Blue | White | Red
@@ -21,15 +21,24 @@ predicate monochrome (a: array color) (i j: int) (c: color) =
   forall k: int. 0 <= i <= k < j <= a.length -> a[k] = c
 
 let dutch_flag (a:array color) : unit
-  ensures { _TO_BE_COMPLETED }
+  ensures { 
+      exists b r : int.
+      monochrome a 0 b Blue /\
+      monochrome a b r White /\
+      monochrome a r (length a) Red
+  }
   ensures { permut_all (old a) a }
 =
   let ref b = 0 in
   let ref i = 0 in
   let ref r = a.length in
   while i < r do
-    invariant { _TO_BE_COMPLETED }
+    invariant { 0 <= b <= i <= r <= length a }
+    invariant { monochrome a 0 b Blue }
+    invariant { monochrome a b i White }
+    invariant { monochrome a r (length a) Red }
     invariant { permut_all (old a) a }
+    variant { r - i }
     match a[i] with
     | Blue ->
         swap a b i;

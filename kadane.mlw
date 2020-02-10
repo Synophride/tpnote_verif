@@ -35,27 +35,30 @@ use int.Int
 use array.Array
 use array.ArraySum
 
-(*
-  [| | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |]
-    ......|###### maxsum #######|..............
-    ............................. |## cursum ##
-*)
-
-predicate _TO_BE_COMPLETED
 
 let kadane (a: array int): int
-  ensures { _TO_BE_COMPLETED }
+  ensures { forall l h : int. 0 <= l <= h <= length a -> sum a l h <= result }
+  ensures { exists l h : int. 0 <= l <= h <= length a /\ sum a l h = result }
 =
   let ref maxsum = 0 in
   let ref cursum = 0 in
+  let ghost ref cur_low = 0 in
+  let ghost ref max_low = 0 in
+  let ghost ref max_high = 0 in
   for i = 0 to a.length - 1 do
-    invariant { _TO_BE_COMPLETED }
+    invariant { forall l : int. 0 <= l <= i -> sum a l i <= cursum }
+    invariant { 0 <= cur_low <= i /\ sum a cur_low i = cursum }
+    invariant { forall l h : int. 0 <= l <= h <= i -> sum a l h <= maxsum }
+    invariant { 0 <= max_low <= max_high <= i /\ sum a max_low max_high = maxsum }
     cursum <- cursum + a[i];
     if cursum < 0 then begin
-      cursum <- 0
+      cursum <- 0;
+      cur_low <- i + 1
     end;
     if cursum > maxsum then begin
-      maxsum <- cursum
+      maxsum <- cursum;
+      max_low <- cur_low;
+      max_high <- i + 1
     end
   done;
   maxsum

@@ -31,8 +31,6 @@ faire les trois pas suivants :
   3. Déplacer la tour de N-1 disques du pivot C au pivot B.
 *)
 
-predicate _TO_BE_COMPLETED
-
 use int.Int
 use list.List
 use list.Length
@@ -60,8 +58,9 @@ axiom prepend_def_succ :
     du sommet du pivot a au sommet du pivot b. *)
 let move (a b: tower) (ghost n: int) (ghost s: list int)
   requires { a.rod = Cons n s }
-  requires { _TO_BE_COMPLETED }
-  ensures  { _TO_BE_COMPLETED }
+  requires { match b.rod with Nil -> true | Cons x _ -> x > n end }
+  ensures  { a.rod = s }
+  ensures  { b.rod = Cons n (old b.rod) }
 =
   match a.rod with
   | Cons x r ->
@@ -72,11 +71,19 @@ let move (a b: tower) (ghost n: int) (ghost s: list int)
 
 let rec hanoi_rec (a b c: tower) (n: int) (ghost s: list int)
   requires { a.rod = prepend n s }
-  requires { _TO_BE_COMPLETED }
-  ensures  { _TO_BE_COMPLETED }
-  (* variant  { (* TO BE COMPLETED *) } *)
+  requires { match b.rod with Nil -> true | Cons x _ -> x > n end }
+  requires { match c.rod with Nil -> true | Cons x _ -> x > n end }
+  variant { n }
+  ensures { a.rod = s }
+  ensures { b.rod = prepend n (old b.rod) }
+  ensures { c.rod = old c.rod }
 =
-  absurd (* TO BE COMPLETED *)
+  if n > 0 then begin
+    let ghost n_s = c.rod in
+    hanoi_rec a c b (n-1) (Cons n s);
+    move a b n s;
+    hanoi_rec c b a (n-1) n_s
+  end
 
 let hanoi (a b c: tower)
   requires { a.rod = prepend (length a.rod) Nil }
