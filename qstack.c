@@ -315,7 +315,7 @@ int transfer(xifo *src, xifo *dst) // OK avec TIMEOUT de 100 (RTE compris)
       int i = 0;
 
       /*@ loop invariant (-1 <= i < dst->size);
-<<<<<<< HEAD
+
 	// éléments après i 
 	@ loop invariant after_i: \forall integer j; -1 <= i < j < dst->size
 	@      ==>   dst->content[ j + offset ]
@@ -365,55 +365,6 @@ int transfer(xifo *src, xifo *dst) // OK avec TIMEOUT de 100 (RTE compris)
 	@ loop assigns src->content[ 0 .. MAX_SIZE - 1], i;
 	
 	@ loop variant (src->size - offset) - i;
-=======
-        @ loop invariant \forall integer j; -1 <= i < j < dst->size
-        @      ==>   dst->content[ j + offset ]
-        @       == \at(dst->content[ j ], LoopEntry);
-        
-        @ loop invariant \forall integer j; 0 <= j <= i 
-        @      ==>  dst->content[ j ]
-        @       == \at(dst->content[ j ], LoopEntry);
-        
-        @ loop assigns dst->content[0 .. MAX_SIZE - 1], i;
-        
-        @ loop variant i;
-        @*/
-      for (i = dst->size - 1; i >= 0; i--)
-        dst->content[i + offset] = dst->content[i];
-
-      /*@ loop invariant orange: 0 <= i <= offset < MAX_SIZE; 
-	
-        @ loop invariant endive: \forall integer j; 0 <= j < i
-        @      ==> dst->content[j]
-        @       == src->content[offset - 1 - j  ];
-        
-        @ loop invariant couscous: \forall integer j;  i <= j < MAX_SIZE
-        @      ==> dst->content[j] == \at(dst->content[j], LoopEntry);
-
-        @ loop assigns dst->content[ 0 .. MAX_SIZE - 1], i;
-        
-        @ loop variant offset - i;
-        @ */
-      for (i = 0; i < offset; i++)
-        //  copie des <offset> derniers éléments de src
-        // vers les <offset> premiers éléments de dst
-        dst->content[i] = src->content[offset - i - 1];
-
-      /*@ loop invariant borne: 0 <= i <= src->size-offset < MAX_SIZE; 
-        
-        @ loop invariant betterave: \forall integer j; 0 <= j< i
-        @      ==> src->content[j]
-        @       == \at( src->content[ j+offset ], LoopEntry );
-
-        @ loop invariant banane:
-        @   \forall integer j; i <= j < MAX_SIZE
-        @      ==> src->content[j]
-        @       == \at(src->content[j], LoopEntry);
-        
-        @ loop assigns src->content[ 0 .. MAX_SIZE - 1], i;
-        
-        @ loop variant (src->size - offset) - i;
->>>>>>> dc389e157f93f4cd8943cd62ac34616be4500911
       */
       for (i = 0; i < src->size - offset; i++)
         // décalage des éléments de <offset> vers la gauche
@@ -425,18 +376,11 @@ int transfer(xifo *src, xifo *dst) // OK avec TIMEOUT de 100 (RTE compris)
       /* les assertions suivantes sont nécessaires avec certaines versions de
          Frama-C et Alt-Ergo. Elles doivent être prouvées. */
 
-<<<<<<< HEAD
       /*@assert \at(src->size, Pre) + \at(dst->size, Pre) == src->size + dst->size;*/
       /*@assert assert1: queueHasShifted{Pre,Here}(dst, offset);*/
       /*@assert assert2: isTransferred{Pre,Here}(src, dst, offset); */
       /*@assert assert3: stackHasShifted{Pre,Here}(src, offset); */
 
-=======
-      /*@assert champignon: \at(src->size, Pre) + \at(dst->size, Pre) == src->size + dst->size;*/
-      /*@assert oignon: queueHasShifted{Pre,Here}(dst, offset);*/
-      /*@assert echalote: isTransferred{Pre,Here}(src, dst, offset); */
-      /*@assert ail: stackHasShifted{Pre,Here}(src, offset); */
->>>>>>> dc389e157f93f4cd8943cd62ac34616be4500911
     }
   }
   return 1;
@@ -502,7 +446,7 @@ int transfer(xifo *src, xifo *dst) // OK avec TIMEOUT de 100 (RTE compris)
   @ disjoint behaviors;
 
   @ */
-<<<<<<< HEAD
+
 int push(qstack *qs, elt e) {
     /*@ assert precond_transfer: // Validation des préconditions
       @    \valid(qs)
@@ -516,32 +460,6 @@ int push(qstack *qs, elt e) {
     //@assert qs->stack.size < MAX_SIZE;
     qs->stack.content[qs->stack.size] = e;
     qs->stack.size++;
-=======
-int push(qstack *qs, elt e)
-{
-  //@ ghost int full_stack=qs->stack.size == MAX_SIZE;
-  //@ ghost int full= full_stack && qs->queue.size == MAX_SIZE;
-
-  /*@ assert precond_transfer:
-      @       \valid(qs)
-      @    && 0 <= (&qs->stack)->size <= MAX_SIZE 
-      @    && 0 <= (&qs->queue)->size <= MAX_SIZE
-      @    && \valid(&qs->stack) && \valid(&qs->queue) 
-      @ && \separated(&qs->stack, &qs->queue);
-    */
-  if (!transfer(&qs->stack, &qs->queue))
-  {
-    //@assert full;
-
-    return -1;
-  }
-
-  //@assert full_stack ==> qs->stack.size < MAX_SIZE;
-  //@assert !full_stack==> qs->stack.size == \at(qs->stack.size, Pre);
-  qs->stack.content[qs->stack.size] = e;
-
-  qs->stack.size++;
->>>>>>> dc389e157f93f4cd8943cd62ac34616be4500911
 
   return e;
 }
@@ -602,15 +520,10 @@ int push(qstack *qs, elt e)
   @ disjoint behaviors;
 
   @ */
-<<<<<<< HEAD
-int enqueue(qstack *qs, elt e) {
-    /*@ assert legit_call:
-=======
+
 int enqueue(qstack *qs, elt e)
 {
-
   /*@ assert legit_call:
->>>>>>> dc389e157f93f4cd8943cd62ac34616be4500911
       @    \valid(qs) 
       @ && 0 <= qs->queue.size <= MAX_SIZE 
       @ && 0 <= qs->stack.size <= MAX_SIZE;
