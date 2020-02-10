@@ -381,35 +381,38 @@ int transfer(xifo *src, xifo *dst) // OK avec TIMEOUT de 100 (RTE compris)
 */
 /* -------------------------------------------------------------------------- */
 
-/*@ requires \valid(qs)
-  @       && \valid(qs -> stack.content+( 0 .. MAX_SIZE - 1 ))
-  @       && \valid(qs -> queue.content+( 0 .. MAX_SIZE - 1 ))
-  @       && 0 <= qs->stack.size <= MAX_SIZE  
-  @       && 0 <= qs->queue.size <= MAX_SIZE;
-
+/*@ requires \valid(qs);
+  @ requires \valid(qs->stack.content+(0 .. MAX_SIZE - 1));
+  @ requires \valid(qs->queue.content+(0 .. MAX_SIZE - 1));
+  @ requires 0 <= qs->stack.size < MAX_SIZE;
+  @ requires 0 <= qs->queue.size < MAX_SIZE;
   @ 
 
   @ behavior full:
-  @   assumes qs->stack.size == MAX_SIZE
-  @       &&  qs->queue.size == MAX_SIZE;
-  @   ensures full_result: \result == -1;
+  @   assumes qs->stack.size == MAX_SIZE;
+  @   assumes qs->queue.size == MAX_SIZE;
+  @   ensures \result == -1;
+  @   ensures qs->stack.size == \old(qs->stack.size);
+  @   ensures qs->queue.size == \old(qs->queue.size);
+  @   ensures qs->stack.content[qs->stack.size] == \old(qs->stack.content[\old(qs->stack.size)]);
+  @   ensures qs->queue.content[qs->queue.size] == \old(qs->queue.content[\old(qs->queue.size)]);
 
-
-  
-
-  
   @ behavior space_left: // la pile de [qs] a au moins un espace libre
   @   assumes qs->stack.size < MAX_SIZE;
   @   assigns qs->stack.size, qs->stack.content[0 .. MAX_SIZE -1];   
-  @   ensures \true;
-
+  @   ensures \result == e;
+  @   ensures qs->stack.size <= MAX_SIZE;
+  @   ensures qs->stack.size == \old(qs->stack.size) + 1;
+  @   ensures qs->stack.content[\old(qs->stack.size)] == \result;
+  @   ensures qs->queue.size == \old(qs->queue.size);
 
   @ behavior transfer: // la pile de [qs] est complète, mais pas sa file
-  @   assumes qs->stack.size == MAX_SIZE 
-  @        && qs->queue.size <  MAX_SIZE;  
-  @   
+  @   assumes qs->stack.size == MAX_SIZE ;
+  @   assumes qs->queue.size <  MAX_SIZE;
+  @   assigns qs->stack.size, qs->queue.size, qs->stack.content[0 .. MAX_SIZE-1], qs->queue.content[0 .. MAX_SIZE-1];
+  @   ensures \result == e;
+  @   ensures qs->stack.content[qs->stack.size - 1] == \result;
 
-  @ ensures \true;
   @ complete behaviors;
   @ disjoint behaviors;
 
@@ -436,9 +439,7 @@ int push(qstack *qs, elt e)
   //@assert full_stack ==> qs->stack.size < MAX_SIZE;
   //@assert !full_stack==> qs->stack.size == \at(qs->stack.size, Pre);
   qs->stack.content[qs->stack.size] = e;
-
   qs->stack.size++;
-
   return e;
 }
 
